@@ -1,5 +1,10 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
+import { pipeline } from "stream/promises";
+import fs from "fs";
+import path from "path";
+import AdmZip from "adm-zip";
 
 const server = Fastify({
   logger: true,
@@ -8,6 +13,12 @@ const server = Fastify({
 // allow requests from frontend
 await server.register(cors, {
   origin: "http://localhost:3000",
+});
+
+await server.register(multipart, {
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB
+  }
 });
 
 server.get("/health", async () => {
@@ -49,6 +60,57 @@ server.post("/api/projects", async (request) => {
   projects.push(project);
 
   return project;
+});
+
+server.post("/api/projects/:projectId/upload", async (request, reply) => {
+  const { projectId } = request.params as { projectId: string };
+  const data = await request.file();
+
+  if (!data) {
+    return reply.status(400).send({ error: "No file uploaded" });
+  }
+
+  if (!data.filename.endsWith(".zip")) {
+    return reply.status(400).send({ error: "Only ZIP files are allowed" });
+  }
+
+  const baseDir = path.join(process.cwd(), "uploads", projectId);
+  await fs.promises.mkdir(baseDir, { recursive: true });
+
+  const zipPath = path.join(baseDir, "source.zip");
+  await pipeline(data.file, fs.createWriteStream(zipPath));
+
+  // Extract ZIP
+  const zip = new AdmZip(zipPath);
+  const extractPath = path.join(baseDir, "extracted");
+  zip.extractAllTo(extractPath, true);
+
+  // Walk file structure
+  const files: string[] = [];
+
+  function walk(dir: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else {
+        files.push(
+          fullPath.replace(extractPath, "").replace(/\\/g, "/")
+        );
+      }
+    }
+  }
+
+  walk(extractPath);
+
+  return {
+    message: "Codebase uploaded and extracted",
+    totalFiles: files.length,
+    sampleFiles: files.slice(0, 10)
+  };
 });
 
 const start = async () => {
