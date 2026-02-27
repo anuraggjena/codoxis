@@ -12,6 +12,14 @@ from app.models.file import File as FileModel
 from app.auth.dependencies import get_current_user
 from app.models.user import User
 from app.services.parser.parser import parse_file_content
+from app.services.graph.edge_builder import build_edges_for_version
+from app.services.graph.cycle_detector import detect_circular_dependencies
+from app.services.graph.import_resolver import resolve_imports
+from app.models.metric import Metric
+from app.services.graph.depth_calculator import calculate_dependency_depth
+from app.services.graph.coupling_calculator import calculate_coupling_score
+from app.services.graph.ahs_calculator import calculate_ahs
+from app.services.graph.drift_detector import detect_architecture_drift
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
@@ -104,8 +112,52 @@ async def upload_zip(
 
     db.commit()
 
+    build_edges_for_version(version.id, db)
+
+    resolve_imports(version.id, db)
+
+    cycle_count = detect_circular_dependencies(version.id, db)
+
+    depth = calculate_dependency_depth(version.id, db)
+    coupling = calculate_coupling_score(version.id, db)
+
+    metric = db.query(Metric).filter(Metric.version_id == version.id).first()
+
+    if metric:
+        metric.circular_dependencies = cycle_count
+        metric.coupling_score = coupling
+        metric.dependency_depth = depth
+    else:
+        metric = Metric(
+            version_id=version.id,
+            circular_dependencies=cycle_count,
+            coupling_score=coupling,
+            dependency_depth=depth,
+        )
+        db.add(metric)
+
+    db.commit()
+
+    ahs_score = calculate_ahs(
+        circular_dependencies=cycle_count,
+        coupling_score=coupling,
+        dependency_depth=depth,
+    )
+
+    version.architecture_score = ahs_score
+    db.commit()
+
+    drift = detect_architecture_drift(project.id, version.id, db)
+
     return {
-        "message": "Repository uploaded and files indexed",
+        "message": "Repository processed successfully",
         "version_id": version.id,
         "version_number": version.version_number,
+        "architecture_score": version.architecture_score,
+        "metrics": {
+            "circular_dependencies": cycle_count,
+            "dependency_depth": depth,
+            "coupling_score": coupling,
+        },
+        "drift": drift,
     }

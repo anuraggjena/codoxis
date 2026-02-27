@@ -9,6 +9,8 @@ class Edge(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     version_id = Column(UUID(as_uuid=True), ForeignKey("project_versions.id"), nullable=False)
+    source_file_id = Column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=False)
+    target_file_id = Column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=False)
     source_symbol_id = Column(UUID(as_uuid=True), ForeignKey("symbols.id"), nullable=False)
     target_symbol_id = Column(UUID(as_uuid=True), ForeignKey("symbols.id"), nullable=False)
     relation_type = Column(String, nullable=False)

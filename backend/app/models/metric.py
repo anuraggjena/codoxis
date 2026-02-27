@@ -6,8 +6,12 @@ from app.database import Base
 class Metric(Base):
     __tablename__ = "metrics"
 
-    version_id = Column(UUID(as_uuid=True), ForeignKey("project_versions.id"), primary_key=True)
+    version_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("project_versions.id"), primary_key=True
+    )
     circular_dependencies = Column(Integer, default=0)
+    dependency_depth = Column(Integer, nullable=True)
     avg_complexity = Column(Float, nullable=True)
     coupling_score = Column(Float, nullable=True)
     cohesion_score = Column(Float, nullable=True)
