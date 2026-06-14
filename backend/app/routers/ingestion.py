@@ -6,7 +6,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pathlib import Path
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.project import Project
 from app.models.project_version import ProjectVersion
 from app.auth.dependencies import get_current_user
@@ -17,15 +17,17 @@ from app.services.ingestion.pipeline import run_repository_analysis
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
 UPLOAD_DIR = "temp_uploads"
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def safe_extract(zip_ref, extract_path):
+    extract_abs = os.path.abspath(extract_path)
+    for member in zip_ref.namelist():
+        member_path = os.path.normpath(os.path.join(extract_path, member))
+        if not member_path.startswith(extract_abs):
+            raise HTTPException(status_code=400, detail="Unsafe zip entry detected")
+    zip_ref.extractall(extract_path)
 
 
 @router.post("/upload/{project_id}")
@@ -67,15 +69,18 @@ async def upload_zip(
     # -------- SAVE ZIP --------
     zip_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}.zip")
 
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="File too large (max 50MB)")
     with open(zip_path, "wb") as buffer:
-        buffer.write(await file.read())
+        buffer.write(content)
 
     # -------- EXTRACT ZIP --------
     extract_path = os.path.join(UPLOAD_DIR, str(uuid.uuid4()))
     os.makedirs(extract_path, exist_ok=True)
 
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_path)
+        safe_extract(zip_ref, extract_path)
 
     try:
         # -------- RUN ANALYSIS PIPELINE --------

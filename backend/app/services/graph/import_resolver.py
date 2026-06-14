@@ -86,5 +86,7 @@ def create_file_edge(version_id, source_file_id, target_file_id, db):
         version_id=version_id,
         source_file_id=source_file_id,
         target_file_id=target_file_id,
+        source_symbol_id=None,
+        target_symbol_id=None,
         relation_type="file_import",
     ))

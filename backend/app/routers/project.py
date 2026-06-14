@@ -3,20 +3,12 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from uuid import UUID
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.project import Project
 from app.auth.dependencies import get_current_user
 from app.models.user import User
 
 router = APIRouter(prefix="/projects", tags=["projects"])
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 class CreateProjectSchema(BaseModel):

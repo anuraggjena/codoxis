@@ -34,16 +34,17 @@ def run_repository_analysis(repo_path, version_id, project_id, db):
             relative_path = os.path.relpath(full_path, repo_path)
 
             with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.readlines()
+                content = f.read()
 
             file_model = FileModel(
                 version_id=version_id,
                 path=relative_path,
                 language=ext.replace(".", ""),
-                loc=len(content),
+                loc=len(content.splitlines()),
             )
 
             db.add(file_model)
+            db.flush()
 
             parse_file_content(file_model, content, db)
 
@@ -81,6 +82,9 @@ def run_repository_analysis(repo_path, version_id, project_id, db):
 
     db.commit()
 
+    # -------- DRIFT DETECTION --------
+    drift = detect_architecture_drift(project_id, version_id, db)
+
     # -------- ARCHITECTURE HEALTH SCORE --------
     ahs_score = calculate_ahs(
         circular_dependencies=cycle_count,
@@ -97,9 +101,6 @@ def run_repository_analysis(repo_path, version_id, project_id, db):
     version.architecture_score = ahs_score
 
     db.commit()
-
-    # -------- DRIFT DETECTION --------
-    drift = detect_architecture_drift(project_id, version_id, db)
 
     return {
         "architecture_score": ahs_score,

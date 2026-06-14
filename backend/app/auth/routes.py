@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.user import User
 from app.auth.utils import hash_password, verify_password, create_access_token
 from pydantic import BaseModel
@@ -16,14 +16,6 @@ class RegisterSchema(BaseModel):
 class LoginSchema(BaseModel):
     email: str
     password: str
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/register")

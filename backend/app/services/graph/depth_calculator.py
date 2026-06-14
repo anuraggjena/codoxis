@@ -33,7 +33,7 @@ def calculate_dependency_depth(version_id, db):
         max_depth = max(max_depth, len(visited))
         visited.remove(node)
 
-    for node in adjacency:
+    for node in list(adjacency):
         dfs(node, set())
 
     return max_depth
