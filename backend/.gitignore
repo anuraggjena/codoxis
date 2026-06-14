@@ -1,0 +1,51 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Secrets and local config
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Runtime uploads
+temp_uploads/
+
+# Node (legacy backend/package.json openai dep — use Python requirements)
+node_modules/
+
+# Build / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Type checkers
+.mypy_cache/
+.pytype/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
