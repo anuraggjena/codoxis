@@ -1,4 +1,4 @@
-rom collections import defaultdict
+from collections import defaultdict
 from app.models.edge import Edge
 from app.models.symbol import Symbol
 
