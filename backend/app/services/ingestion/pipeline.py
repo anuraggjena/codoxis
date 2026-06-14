@@ -34,52 +34,64 @@ def run_repository_analysis(repo_path, version_id, project_id, db):
             relative_path = os.path.relpath(full_path, repo_path)
 
             with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.readlines()
+                content = f.read()
 
             file_model = FileModel(
                 version_id=version_id,
                 path=relative_path,
                 language=ext.replace(".", ""),
-                loc=len(content),
+                loc=len(content.splitlines()),
             )
 
             db.add(file_model)
+            db.flush()
 
             parse_file_content(file_model, content, db)
 
     db.commit()
 
+    cycle_count = 0
+    depth = 0
+    coupling = 0.0
+    drift = None
+
     # -------- GRAPH BUILDING --------
-    build_edges_for_version(version_id, db)
+    try:
+        build_edges_for_version(version_id, db)
 
-    resolve_imports(version_id, db)
+        resolve_imports(version_id, db)
 
-    # -------- METRICS CALCULATION --------
-    cycle_count = detect_circular_dependencies(version_id, db)
+        # -------- METRICS CALCULATION --------
+        cycle_count = detect_circular_dependencies(version_id, db)
 
-    depth = calculate_dependency_depth(version_id, db)
+        depth = calculate_dependency_depth(version_id, db)
 
-    coupling = calculate_coupling_score(version_id, db)
+        coupling = calculate_coupling_score(version_id, db)
 
-    # -------- STORE METRICS --------
-    metric = db.query(Metric).filter(
-        Metric.version_id == version_id
-    ).first()
+        # -------- STORE METRICS --------
+        metric = db.query(Metric).filter(
+            Metric.version_id == version_id
+        ).first()
 
-    if metric:
-        metric.circular_dependencies = cycle_count
-        metric.coupling_score = coupling
-        metric.dependency_depth = depth
-    else:
-        metric = Metric(
-            version_id=version_id,
-            circular_dependencies=cycle_count,
-            coupling_score=coupling,
-            dependency_depth=depth,
-        )
-        db.add(metric)
+        if metric:
+            metric.circular_dependencies = cycle_count
+            metric.coupling_score = coupling
+            metric.dependency_depth = depth
+        else:
+            metric = Metric(
+                version_id=version_id,
+                circular_dependencies=cycle_count,
+                coupling_score=coupling,
+                dependency_depth=depth,
+            )
+            db.add(metric)
 
-    db.commit()
+        db.commit()
+
+        # -------- DRIFT DETECTION --------
+        drift = detect_architecture_drift(project_id, version_id, db)
+    except Exception:
+        db.rollback()
 
     # -------- ARCHITECTURE HEALTH SCORE --------
     ahs_score = calculate_ahs(
@@ -97,9 +109,6 @@ def run_repository_analysis(repo_path, version_id, project_id, db):
     version.architecture_score = ahs_score
 
     db.commit()
-
-    # -------- DRIFT DETECTION --------
-    drift = detect_architecture_drift(project_id, version_id, db)
 
     return {
         "architecture_score": ahs_score,
