@@ -6,7 +6,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pathlib import Path
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.project import Project
 from app.models.project_version import ProjectVersion
 from app.auth.dependencies import get_current_user
@@ -28,14 +28,6 @@ def safe_extract(zip_ref, extract_path):
         if not member_path.startswith(extract_abs):
             raise HTTPException(status_code=400, detail="Unsafe zip entry detected")
     zip_ref.extractall(extract_path)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/upload/{project_id}")
