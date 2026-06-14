@@ -33,9 +33,9 @@ def detect_architecture_drift(project_id, current_version_id, db):
         return None
 
     drift = {
-        "ahs_change": current_version.architecture_score - previous_version.architecture_score,
+        "ahs_change": (current_version.architecture_score or 0) - (previous_version.architecture_score or 0),
         "circular_dependency_change": current_metrics.circular_dependencies - previous_metrics.circular_dependencies,
-        "coupling_change": current_metrics.coupling_score - previous_metrics.coupling_score,
+        "coupling_change": (current_metrics.coupling_score or 0) - (previous_metrics.coupling_score or 0),
         "depth_change": (current_metrics.dependency_depth or 0) - (previous_metrics.dependency_depth or 0),
     }
 

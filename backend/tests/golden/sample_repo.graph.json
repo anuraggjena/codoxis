@@ -1,0 +1,9 @@
+{
+  "file_count": 2,
+  "file_paths": ["main.py", "utils.py"],
+  "min_file_import_edges": 1,
+  "expected_import_edge": {
+    "source_contains": "main.py",
+    "target_contains": "utils.py"
+  }
+}

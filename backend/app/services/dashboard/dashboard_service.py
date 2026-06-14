@@ -51,6 +51,7 @@ def build_dashboard(version_id, db):
             "total_dependencies": total_edges,
         },
         "graph_summary": summary,
+        "graph_quality": version.graph_quality_json,
         "drift": drift,
         "top_critical_files": top_critical_files,
     }

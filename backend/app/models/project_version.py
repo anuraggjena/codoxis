@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, JSON, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -12,6 +12,11 @@ class ProjectVersion(Base):
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
     version_number = Column(Integer, nullable=False)
     architecture_score = Column(Float, nullable=True)
+    graph_quality_json = Column(JSON, nullable=True)
+    commit_sha = Column(String, nullable=True)
+    commit_message = Column(String, nullable=True)
+    source_type = Column(String, nullable=True, default="zip")
+    ingestion_status = Column(String, nullable=True, default="completed")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     project = relationship("Project", back_populates="versions")

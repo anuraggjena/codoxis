@@ -42,5 +42,7 @@ def test_pipeline_parses_files_and_symbols(db):
 
     assert len(files) == 2
     assert len(symbols) >= 2
+    assert all(f.hash for f in files), "every ingested file must have a content hash"
+    assert len({f.hash for f in files}) == len(files), "hashes must differ for distinct files"
     assert "architecture_score" in result
     assert result["architecture_score"] is not None

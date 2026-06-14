@@ -30,7 +30,8 @@ def build_refactor_context(version_id, db) -> dict:
         })
 
     total_edges = len(graph["edges"])
-    data_quality = "high" if total_edges > 0 else "low"
+    gq = dashboard.get("graph_quality") or {}
+    data_quality = gq.get("quality_tier") or ("high" if total_edges > 0 else "low")
 
     return {
         "dashboard": dashboard,

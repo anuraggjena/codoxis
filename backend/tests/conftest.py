@@ -1,30 +1,59 @@
 ﻿import os
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only")
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("OPENROUTER_API_KEY", "test-key")
+
+USE_POSTGRES = os.environ.get("PYTEST_USE_POSTGRES") == "1"
+DATABASE_URL = (
+    os.environ["DATABASE_URL"]
+    if USE_POSTGRES and os.environ.get("DATABASE_URL", "").startswith("postgresql")
+    else "sqlite:///:memory:"
+)
 
 from app.database import Base, get_db
 from app.main import app
+from app.models import oauth_token  # noqa: F401 — register table for create_all
 
-engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+if USE_POSTGRES:
+    engine = create_engine(DATABASE_URL)
+else:
+    os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+def _truncate_tables():
+    tables = [
+        "oauth_tokens", "metrics", "edges", "symbols", "files",
+        "project_versions", "projects", "users",
+    ]
+    with engine.begin() as conn:
+        for table in tables:
+            try:
+                conn.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+            except Exception:
+                pass
 
 
 @pytest.fixture(autouse=True)
 def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
+    if USE_POSTGRES:
+        yield
+        _truncate_tables()
+    else:
+        Base.metadata.create_all(bind=engine)
+        yield
+        Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

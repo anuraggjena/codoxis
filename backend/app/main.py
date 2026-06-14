@@ -1,19 +1,13 @@
+import logging
 import os
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
-from app.database import Base, engine
-
-# Models (required for SQLAlchemy table creation)
-from app.models import (
-    user,
-    project,
-    project_version,
-    file,
-    symbol,
-    edge,
-    metric
-)
+from app.database import get_db
+from app.middleware.request_logging import RequestLoggingMiddleware
+from app.middleware.ai_rate_limit import AIRateLimitMiddleware
 
 # Routers
 from app.auth.routes import router as auth_router
@@ -31,6 +25,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+logging.basicConfig(level=logging.INFO)
+
+app.add_middleware(AIRateLimitMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ["SECRET_KEY"],
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
@@ -39,8 +42,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Database schema is managed by Alembic migrations.
+# Run `alembic upgrade head` before starting the server.
+
+
+@app.get("/health")
+def health(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+
+    db.execute(text("SELECT 1"))
+    alembic_version = None
+    try:
+        row = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).first()
+        if row:
+            alembic_version = row[0]
+    except Exception:
+        pass
+    return {
+        "status": "ok",
+        "service": "codoxis-backend",
+        "alembic_version": alembic_version,
+    }
 
 
 @app.get("/")

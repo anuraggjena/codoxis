@@ -39,7 +39,10 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
 def login(data: LoginSchema, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
 
-    if not user or not verify_password(data.password, user.hashed_password):
+    if not user or not user.hashed_password:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": str(user.id)})

@@ -3,7 +3,6 @@ from app.models.metric import Metric
 
 
 def get_architecture_timeline(project_id, db):
-
     versions = (
         db.query(ProjectVersion)
         .filter(ProjectVersion.project_id == project_id)
@@ -12,20 +11,27 @@ def get_architecture_timeline(project_id, db):
     )
 
     timeline = []
+    prev_score = None
 
     for version in versions:
-
-        metric = db.query(Metric).filter(
-            Metric.version_id == version.id
-        ).first()
-
-        timeline.append({
+        metric = db.query(Metric).filter(Metric.version_id == version.id).first()
+        score = version.architecture_score
+        entry = {
             "version": version.version_number,
             "version_id": str(version.id),
-            "architecture_score": version.architecture_score,
+            "architecture_score": score,
             "coupling": metric.coupling_score if metric else None,
             "dependency_depth": metric.dependency_depth if metric else None,
-            "circular_dependencies": metric.circular_dependencies if metric else None
-        })
+            "circular_dependencies": metric.circular_dependencies if metric else None,
+            "commit_sha": version.commit_sha,
+            "source_type": version.source_type,
+        }
+        if prev_score is not None and score is not None:
+            entry["delta_from_previous"] = round(score - prev_score, 2)
+        else:
+            entry["delta_from_previous"] = None
+        if score is not None:
+            prev_score = score
+        timeline.append(entry)
 
     return timeline

@@ -99,6 +99,64 @@ export const api = {
     request<{ answer: string }>(
       `/ai/ask/${versionId}?question=${encodeURIComponent(question)}`,
     ),
+
+  getGraph: (versionId: string) =>
+    request<GraphData>(`/analysis/graph/${versionId}`),
+
+  getEvolution: (versionId: string) =>
+    request<EvolutionDiff>(`/analysis/evolution/${versionId}`),
+
+  getRootCause: (versionId: string, mode: "beginner" | "advanced" = "beginner") =>
+    request<RootCauseResponse>(`/ai/root-cause/${versionId}?mode=${mode}`),
+
+  getTechnicalDebt: (versionId: string) =>
+    request<DebtReport>(`/analysis/debt/${versionId}`),
+
+  getHeatmap: (versionId: string) =>
+    request<HeatmapData>(`/analysis/heatmap/${versionId}`),
+
+  getArchitectureReport: (versionId: string, mode: "beginner" | "advanced" = "advanced") =>
+    request<{ analysis: string }>(`/ai/architecture-report/${versionId}?mode=${mode}`),
+
+  copilotAsk: (versionId: string, question: string, mode: "beginner" | "advanced" = "advanced") =>
+    request<CopilotResponse>("/ai/copilot/ask", {
+      method: "POST",
+      body: JSON.stringify({ version_id: versionId, question, mode }),
+    }),
+
+  getCopilotSuggestions: (versionId: string) =>
+    request<{ suggestions: string[] }>(`/ai/copilot/suggestions/${versionId}`),
+
+  getGraphQuality: (versionId: string) =>
+    request<GraphQuality>(`/analysis/graph-quality/${versionId}`),
+
+  compareVersions: (versionId1: string, versionId2: string) =>
+    request<Record<string, unknown>>(`/analysis/compare/${versionId1}/${versionId2}`),
+
+  getDependencyPath: (versionId: string, fromFile: string, toFile: string) =>
+    request<{ shortest_path: string[] | null; all_paths: string[][]; path_count: number }>(
+      `/analysis/dependency-path/${versionId}?from=${encodeURIComponent(fromFile)}&to=${encodeURIComponent(toFile)}`,
+    ),
+
+  getClusters: (versionId: string) =>
+    request<Record<string, unknown>>(`/analysis/clusters/${versionId}`),
+
+  getBoundaries: (versionId: string) =>
+    request<Record<string, unknown>>(`/analysis/boundaries/${versionId}`),
+
+  uploadZipAsync: (projectId: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<{ job_id: string; version_id: string }>(`/ingestion/upload-async/${projectId}`, {
+      method: "POST",
+      body: form,
+    });
+  },
+
+  getIngestionStatus: (jobId: string) =>
+    request<{ job_id: string; status: string; result?: Record<string, unknown>; error?: string }>(
+      `/ingestion/status/${jobId}`,
+    ),
 };
 
 export type Project = {
@@ -115,6 +173,9 @@ export type TimelineEntry = {
   coupling: number | null;
   dependency_depth: number | null;
   circular_dependencies: number | null;
+  delta_from_previous?: number | null;
+  commit_sha?: string | null;
+  source_type?: string | null;
 };
 
 export type UploadResult = {
@@ -141,6 +202,7 @@ export type Dashboard = {
     file_path: string;
     centrality_score: number;
   }>;
+  graph_quality?: GraphQuality | null;
 };
 
 export type RefactorPlan = {
@@ -158,4 +220,84 @@ export type RefactorPlan = {
     beginner_explanation: string;
     estimated_ahs_impact: string;
   }>;
+};
+
+export type GraphData = {
+  nodes: Array<{
+    id: string;
+    label: string;
+    full_path: string;
+    centrality: number;
+  }>;
+  edges: Array<{
+    source: string;
+    target: string;
+    type: string;
+  }>;
+  total_nodes?: number;
+  truncated?: boolean;
+};
+
+export type GraphQuality = {
+  resolution_rate_imports?: number;
+  resolution_rate_calls?: number;
+  quality_tier: string;
+  warnings?: string[];
+};
+
+export type EvolutionDiff = {
+  base_version_id: string;
+  target_version_id: string;
+  summary: {
+    files_added: number;
+    files_removed: number;
+    files_modified: number;
+    edges_added: number;
+    edges_removed: number;
+    ahs_change: number;
+    coupling_change: number;
+    cycle_change: number;
+    depth_change: number;
+  };
+  file_changes: Array<{ path: string; change: string; hash_changed?: boolean }>;
+  edge_changes: Array<{
+    change: string;
+    source: string;
+    target: string;
+    relation_type: string;
+    introduces_cycle?: boolean;
+  }>;
+  metric_attribution: Array<{ rank: number; factor: string; contribution_estimate: number }>;
+  data_quality: string;
+};
+
+export type RootCauseResponse = {
+  version_id: string;
+  headline: string;
+  root_causes: Array<{
+    title: string;
+    severity: string;
+    evidence_refs: string[];
+    explanation: string;
+    recommended_action: string;
+  }>;
+  confidence: string;
+  data_quality_note: string;
+};
+
+export type DebtReport = {
+  project_technical_debt_score: number;
+  files: Array<{ file_path: string; technical_debt_score: number; in_cycle: boolean }>;
+  files_in_cycles: number;
+};
+
+export type HeatmapData = {
+  nodes: Array<{ file_path: string; heat: number }>;
+  max_heat: number;
+};
+
+export type CopilotResponse = {
+  answer: string;
+  citations: Array<{ evidence_id: string; type: string }>;
+  confidence: string;
 };

@@ -10,7 +10,9 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)
+    github_id = Column(String, unique=True, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     projects = relationship("Project", back_populates="user", cascade="all, delete")
+    oauth_tokens = relationship("OAuthToken", back_populates="user", cascade="all, delete")

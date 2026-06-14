@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import CompareVersions from "@/components/CompareVersions";
 import { api, ApiError, TimelineEntry } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 
@@ -99,6 +100,11 @@ export default function ProjectPage() {
                     <p className="text-sm text-zinc-500">
                       Score {entry.architecture_score?.toFixed(1) ?? "—"} ·{" "}
                       {entry.circular_dependencies ?? 0} cycles
+                      {entry.delta_from_previous != null && (
+                        <span className={entry.delta_from_previous >= 0 ? " text-green-600" : " text-red-600"}>
+                          {" "}({entry.delta_from_previous >= 0 ? "+" : ""}{entry.delta_from_previous.toFixed(1)} AHS)
+                        </span>
+                      )}
                     </p>
                   </div>
                   <span className="text-sm text-zinc-400">View →</span>
@@ -106,6 +112,15 @@ export default function ProjectPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {timeline.length >= 2 && (
+          <section className="mt-10 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="text-lg font-medium">Compare versions</h2>
+            <div className="mt-4">
+              <CompareVersions timeline={timeline} />
+            </div>
+          </section>
         )}
       </main>
     </div>
