@@ -1,19 +1,12 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
+import uuid
+from app.database import get_db
 from app.models.user import User
 from app.auth.utils import decode_access_token
 
 security = HTTPBearer()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def get_current_user(
@@ -26,7 +19,13 @@ def get_current_user(
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    user = db.query(User).filter(User.id == payload.get("sub")).first()
+    sub = payload.get("sub")
+    try:
+        user_id = uuid.UUID(sub) if isinstance(sub, str) else sub
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = db.query(User).filter(User.id == user_id).first()
 
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
