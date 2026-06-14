@@ -32,6 +32,9 @@ def import_github_repo(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    if not repo_url.startswith("https://github.com/"):
+        raise HTTPException(status_code=400, detail="Only github.com HTTPS URLs are allowed")
+
     temp_dir = tempfile.mkdtemp()
 
     try:
