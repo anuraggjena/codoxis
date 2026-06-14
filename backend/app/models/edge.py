@@ -11,8 +11,8 @@ class Edge(Base):
     version_id = Column(UUID(as_uuid=True), ForeignKey("project_versions.id"), nullable=False)
     source_file_id = Column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=False)
     target_file_id = Column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=False)
-    source_symbol_id = Column(UUID(as_uuid=True), ForeignKey("symbols.id"), nullable=False)
-    target_symbol_id = Column(UUID(as_uuid=True), ForeignKey("symbols.id"), nullable=False)
+    source_symbol_id = Column(UUID(as_uuid=True), ForeignKey("symbols.id"), nullable=True)
+    target_symbol_id = Column(UUID(as_uuid=True), ForeignKey("symbols.id"), nullable=True)
     relation_type = Column(String, nullable=False)
 
     version = relationship("ProjectVersion", back_populates="edges")

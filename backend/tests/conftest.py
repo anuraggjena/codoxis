@@ -48,3 +48,9 @@ def client(db):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+from pathlib import Path
+
+
+@pytest.fixture
+def sample_repo():
+    return Path(__file__).parent / "fixtures" / "sample_repo"

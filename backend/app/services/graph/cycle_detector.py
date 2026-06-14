@@ -40,7 +40,7 @@ def detect_circular_dependencies(version_id, db):
 
         recursion_stack.remove(node)
 
-    for node in adjacency:
+    for node in list(adjacency):
         if node not in visited:
             dfs(node)
 
